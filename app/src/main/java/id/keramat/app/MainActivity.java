@@ -67,8 +67,21 @@ public class MainActivity extends Activity {
         webView.setWebViewClient(new WebViewClient() {
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, String url) {
+                sinkronkanModeDariUrl(url);
                 view.loadUrl(url);
                 return true;
+            }
+
+            @Override
+            public void onPageStarted(WebView view, String url, android.graphics.Bitmap favicon) {
+                super.onPageStarted(view, url, favicon);
+                sinkronkanModeDariUrl(url);
+            }
+
+            @Override
+            public void onPageFinished(WebView view, String url) {
+                super.onPageFinished(view, url);
+                sinkronkanModeDariUrl(url);
             }
         });
 
@@ -95,9 +108,39 @@ public class MainActivity extends Activity {
             }
         });
 
-        // Mulai dari menu awal tanpa mengunci (mode guru & menu tetap bebas)
         isExamRunning = false;
+        isLocked = false;
         webView.loadUrl("file:///android_asset/index.html");
+    }
+
+    private void sinkronkanModeDariUrl(String url) {
+        if (url == null) return;
+        String lowerUrl = url.toLowerCase();
+
+        // Jika masuk ke halaman/mode guru atau menu utama -> matikan kunci total
+        if (lowerUrl.contains("guru") || lowerUrl.endsWith("/index.html") || lowerUrl.contains("index.html#")) {
+            setModeUjianAktif(false);
+            return;
+        }
+
+        // Jika masuk ke halaman siswa / ujian siswa -> aktifkan kunci
+        if (lowerUrl.contains("siswa") || lowerUrl.contains("ujian")) {
+            setModeUjianAktif(true);
+        } else {
+            setModeUjianAktif(false);
+        }
+    }
+
+    private void setModeUjianAktif(boolean aktif) {
+        runOnUiThread(() -> {
+            isExamRunning = aktif;
+            if (!aktif) {
+                isLocked = false;
+                if (lockScreenView != null) {
+                    lockScreenView.setVisibility(View.GONE);
+                }
+            }
+        });
     }
 
     @Override
@@ -135,6 +178,9 @@ public class MainActivity extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
+        if (webView != null) {
+            sinkronkanModeDariUrl(webView.getUrl());
+        }
         if (isExamRunning && isLocked) {
             tampilkanHalamanLoginPengawas("Terdeteksi keluar aplikasi atau menekan tombol Home / Ringkasan.");
         }
@@ -159,6 +205,7 @@ public class MainActivity extends Activity {
     }
 
     private void tampilkanHalamanLoginPengawas(String alasan) {
+        if (!isExamRunning) return;
         isLocked = true;
 
         if (lockScreenView == null) {
@@ -248,24 +295,12 @@ public class MainActivity extends Activity {
     private class ExamBridge {
         @JavascriptInterface
         public void mulaiUjian() {
-            runOnUiThread(() -> {
-                isExamRunning = true;
-                isLocked = false;
-                if (lockScreenView != null) {
-                    lockScreenView.setVisibility(View.GONE);
-                }
-            });
+            setModeUjianAktif(true);
         }
 
         @JavascriptInterface
         public void selesaiUjian() {
-            runOnUiThread(() -> {
-                isExamRunning = false;
-                isLocked = false;
-                if (lockScreenView != null) {
-                    lockScreenView.setVisibility(View.GONE);
-                }
-            });
+            setModeUjianAktif(false);
         }
     }
 }
