@@ -254,25 +254,112 @@ private android.widget.TextView tvAlasanKecurangan;
         // ... isi kode tampilkanHalamanLoginPengawas ...
     }
 
-    @Override
+  @Override
     public void onBackPressed() {
-        // ... isi kode onBackPressed ...
+        tampilkanHalamanLoginPengawas("Siswa menekan tombol BACK.");
     }
 
     @Override
     protected void onUserLeaveHint() {
-        // ... isi kode onUserLeaveHint ...
+        super.onUserLeaveHint();
+        isLocked = true;
     }
 
     @Override
     protected void onResume() {
-        // ... isi kode onResume ...
+        super.onResume();
+        if (isLocked) {
+            tampilkanHalamanLoginPengawas("Terdeteksi keluar aplikasi atau menekan tombol Home / Ringkasan.");
+        }
     }
 
-} // <-- Ini kurung kurawal penutup TERAKHIR file MainActivity.java
-    @Override
-    public void onBackPressed() {
-        if (webView != null && webView.canGoBack()) webView.goBack();
-        else super.onBackPressed();
+    private void tampilkanHalamanLoginPengawas(String alasan) {
+        isLocked = true;
+
+        if (lockScreenView == null) {
+            android.widget.LinearLayout layout = new android.widget.LinearLayout(this);
+            layout.setOrientation(android.widget.LinearLayout.VERTICAL);
+            layout.setGravity(android.view.Gravity.CENTER);
+            layout.setPadding(60, 80, 60, 80);
+            layout.setBackgroundColor(android.graphics.Color.parseColor("#0F172A"));
+            layout.setClickable(true);
+            layout.setFocusable(true);
+
+            android.widget.TextView tvJudul = new android.widget.TextView(this);
+            tvJudul.setText("LAYAR DIKUNCI - TERDETEKSI KECURANGAN");
+            tvJudul.setTextColor(android.graphics.Color.parseColor("#F87171"));
+            tvJudul.setTextSize(20f);
+            tvJudul.setGravity(android.view.Gravity.CENTER);
+            tvJudul.setTypeface(null, android.graphics.Typeface.BOLD);
+
+            tvAlasanKecurangan = new android.widget.TextView(this);
+            tvAlasanKecurangan.setTextColor(android.graphics.Color.parseColor("#E2E8F0"));
+            tvAlasanKecurangan.setTextSize(14f);
+            tvAlasanKecurangan.setGravity(android.view.Gravity.CENTER);
+            tvAlasanKecurangan.setPadding(0, 20, 0, 40);
+
+            android.widget.TextView tvLabel = new android.widget.TextView(this);
+            tvLabel.setText("Login Pengawas untuk Membuka Ujian");
+            tvLabel.setTextColor(android.graphics.Color.WHITE);
+            tvLabel.setTextSize(15f);
+            tvLabel.setTypeface(null, android.graphics.Typeface.BOLD);
+            tvLabel.setPadding(0, 0, 0, 12);
+
+            etPasswordPengawas = new android.widget.EditText(this);
+            etPasswordPengawas.setHint("Masukkan password pengawas");
+            etPasswordPengawas.setHintTextColor(android.graphics.Color.parseColor("#94A3B8"));
+            etPasswordPengawas.setTextColor(android.graphics.Color.WHITE);
+            etPasswordPengawas.setBackgroundColor(android.graphics.Color.parseColor("#1E293B"));
+            etPasswordPengawas.setPadding(30, 24, 30, 24);
+            etPasswordPengawas.setInputType(
+                android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD
+            );
+
+            android.widget.TextView tvError = new android.widget.TextView(this);
+            tvError.setTextColor(android.graphics.Color.parseColor("#FCA5A5"));
+            tvError.setTextSize(13f);
+            tvError.setPadding(0, 12, 0, 20);
+
+            android.widget.Button btnBuka = new android.widget.Button(this);
+            btnBuka.setText("Buka Kunci Layar");
+            btnBuka.setBackgroundColor(android.graphics.Color.parseColor("#2563EB"));
+            btnBuka.setTextColor(android.graphics.Color.WHITE);
+            btnBuka.setPadding(30, 24, 30, 24);
+
+            btnBuka.setOnClickListener(v -> {
+                String inputPass = etPasswordPengawas.getText().toString().trim();
+                if (inputPass.equals(PASSWORD_PENGAWAS)) {
+                    isLocked = false;
+                    etPasswordPengawas.setText("");
+                    tvError.setText("");
+                    lockScreenView.setVisibility(android.view.View.GONE);
+                } else {
+                    tvError.setText("Password pengawas salah! Ujian tetap terkunci.");
+                }
+            });
+
+            layout.addView(tvJudul);
+            layout.addView(tvAlasanKecurangan);
+            layout.addView(tvLabel);
+            layout.addView(etPasswordPengawas);
+            layout.addView(tvError);
+            layout.addView(btnBuka);
+
+            lockScreenView = layout;
+            addContentView(
+                lockScreenView,
+                new android.view.ViewGroup.LayoutParams(
+                    android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+                    android.view.ViewGroup.LayoutParams.MATCH_PARENT
+                )
+            );
+        }
+
+        tvAlasanKecurangan.setText(alasan + "\nSilakan panggil pengawas untuk memasukkan password.");
+        lockScreenView.setVisibility(android.view.View.VISIBLE);
+        lockScreenView.bringToFront();
+    }
+
+} // <-- Penutup TERAKHIR class MainActivity
     }
 }
