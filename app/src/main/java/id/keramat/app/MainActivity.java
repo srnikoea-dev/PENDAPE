@@ -2,6 +2,7 @@ package id.keramat.app;
 
 import android.app.Activity;
 import android.content.Intent;
+import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.media.MediaPlayer;
@@ -36,7 +37,7 @@ public class MainActivity extends Activity {
     private boolean isExamRunning = false;
     private MediaPlayer alarmPlayer;
     private boolean isLocked = false;
-    private final String PASSWORD_PENGAWAS = "PENGAWAS2026"; // Ganti sesuai password pengawas
+    private final String PASSWORD_PENGAWAS = "2026"; // Ganti sesuai password pengawas
     private View lockScreenView;
     private EditText etPasswordPengawas;
     private TextView tvAlasanKecurangan;
@@ -67,21 +68,21 @@ public class MainActivity extends Activity {
         webView.setWebViewClient(new WebViewClient() {
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, String url) {
-                sinkronkanModeDariUrl(url);
+                sinkronkanModeNonUjianDariUrl(url);
                 view.loadUrl(url);
                 return true;
             }
 
             @Override
-            public void onPageStarted(WebView view, String url, android.graphics.Bitmap favicon) {
+            public void onPageStarted(WebView view, String url, Bitmap favicon) {
                 super.onPageStarted(view, url, favicon);
-                sinkronkanModeDariUrl(url);
+                sinkronkanModeNonUjianDariUrl(url);
             }
 
             @Override
             public void onPageFinished(WebView view, String url) {
                 super.onPageFinished(view, url);
-                sinkronkanModeDariUrl(url);
+                sinkronkanModeNonUjianDariUrl(url);
             }
         });
 
@@ -108,25 +109,17 @@ public class MainActivity extends Activity {
             }
         });
 
-        isExamRunning = false;
-        isLocked = false;
+        // Selalu mulai dalam keadaan TIDAK terkunci (menu & mode guru bebas)
+        setModeUjianAktif(false);
         webView.loadUrl("file:///android_asset/index.html");
     }
 
-    private void sinkronkanModeDariUrl(String url) {
+    // Hanya mematikan kunci jika keluar ke halaman non-ujian (misal menu / guru)
+    private void sinkronkanModeNonUjianDariUrl(String url) {
         if (url == null) return;
         String lowerUrl = url.toLowerCase();
 
-        // Jika masuk ke halaman/mode guru atau menu utama -> matikan kunci total
-        if (lowerUrl.contains("guru") || lowerUrl.endsWith("/index.html") || lowerUrl.contains("index.html#")) {
-            setModeUjianAktif(false);
-            return;
-        }
-
-        // Jika masuk ke halaman siswa / ujian siswa -> aktifkan kunci
-        if (lowerUrl.contains("siswa") || lowerUrl.contains("ujian")) {
-            setModeUjianAktif(true);
-        } else {
+        if (lowerUrl.contains("guru") || lowerUrl.endsWith("/index.html")) {
             setModeUjianAktif(false);
         }
     }
@@ -178,11 +171,8 @@ public class MainActivity extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
-        if (webView != null) {
-            sinkronkanModeDariUrl(webView.getUrl());
-        }
         if (isExamRunning && isLocked) {
-            tampilkanHalamanLoginPengawas("Terdeteksi keluar aplikasi atau menekan tombol Home / Ringkasan.");
+            tampilkanHalamanLoginPengawas("Terdeteksi menekan tombol HOME / RECENT atau keluar aplikasi.");
         }
     }
 
