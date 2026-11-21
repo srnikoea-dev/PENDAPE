@@ -11,6 +11,7 @@ import android.text.InputType;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
+import android.webkit.JavascriptInterface;
 import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
 import android.webkit.WebSettings;
@@ -61,6 +62,8 @@ public class MainActivity extends Activity {
         settings.setAllowContentAccess(true);
         settings.setMediaPlaybackRequiresUserGesture(false);
 
+        webView.addJavascriptInterface(new ExamBridge(), "AndroidExam");
+
         webView.setWebViewClient(new WebViewClient() {
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, String url) {
@@ -92,7 +95,8 @@ public class MainActivity extends Activity {
             }
         });
 
-        isExamRunning = true;
+        // Mulai dari menu awal tanpa mengunci (mode guru & menu tetap bebas)
+        isExamRunning = false;
         webView.loadUrl("file:///android_asset/index.html");
     }
 
@@ -111,7 +115,13 @@ public class MainActivity extends Activity {
 
     @Override
     public void onBackPressed() {
-        tampilkanHalamanLoginPengawas("Siswa menekan tombol BACK.");
+        if (isExamRunning) {
+            tampilkanHalamanLoginPengawas("Siswa menekan tombol BACK saat ujian berlangsung.");
+        } else if (webView != null && webView.canGoBack()) {
+            webView.goBack();
+        } else {
+            super.onBackPressed();
+        }
     }
 
     @Override
@@ -233,5 +243,29 @@ public class MainActivity extends Activity {
         tvAlasanKecurangan.setText(alasan + "\nSilakan panggil pengawas untuk memasukkan password.");
         lockScreenView.setVisibility(View.VISIBLE);
         lockScreenView.bringToFront();
+    }
+
+    private class ExamBridge {
+        @JavascriptInterface
+        public void mulaiUjian() {
+            runOnUiThread(() -> {
+                isExamRunning = true;
+                isLocked = false;
+                if (lockScreenView != null) {
+                    lockScreenView.setVisibility(View.GONE);
+                }
+            });
+        }
+
+        @JavascriptInterface
+        public void selesaiUjian() {
+            runOnUiThread(() -> {
+                isExamRunning = false;
+                isLocked = false;
+                if (lockScreenView != null) {
+                    lockScreenView.setVisibility(View.GONE);
+                }
+            });
+        }
     }
 }
