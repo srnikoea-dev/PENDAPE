@@ -1,7 +1,12 @@
 package id.keramat.app;
 
 import android.app.Activity;
+import android.content.Context;
 import android.content.Intent;
+import android.media.AudioAttributes;
+import android.media.AudioManager;
+import android.media.MediaPlayer;
+import android.media.RingtoneManager;
 import android.net.Uri;
 import android.os.Bundle;
 import android.util.Base64;
@@ -23,7 +28,12 @@ public class MainActivity extends Activity {
     private byte[] pendingBytes;
     private String pendingMime = "application/json";
 
-    @Override public void onCreate(Bundle state) {
+    // ===== Anti-curang =====
+    private boolean isExamRunning = false;
+    private MediaPlayer alarmPlayer;
+
+    @Override
+    public void onCreate(Bundle state) {
         super.onCreate(state);
         webView = new WebView(this);
         setContentView(webView);
@@ -37,13 +47,18 @@ public class MainActivity extends Activity {
         settings.setBuiltInZoomControls(false);
 
         webView.addJavascriptInterface(new Object() {
-            @JavascriptInterface public void saveJson(String content, String filename) {
+            @JavascriptInterface
+            public void saveJson(String content, String filename) {
                 saveTextFile(content, filename, "application/json");
             }
-            @JavascriptInterface public void saveFile(String content, String filename, String mime) {
+
+            @JavascriptInterface
+            public void saveFile(String content, String filename, String mime) {
                 saveTextFile(content, filename, mime);
             }
-            @JavascriptInterface public void saveBase64File(String content, String filename, String mime) {
+
+            @JavascriptInterface
+            public void saveBase64File(String content, String filename, String mime) {
                 runOnUiThread(() -> {
                     try {
                         pendingBytes = Base64.decode(content, Base64.DEFAULT);
@@ -53,11 +68,25 @@ public class MainActivity extends Activity {
                     } catch (Exception ignored) { }
                 });
             }
+
+            // Dipanggil dari siswa.html saat ujian mulai
+            @JavascriptInterface
+            public void examStarted() {
+                isExamRunning = true;
+            }
+
+            // Dipanggil dari siswa.html saat ujian selesai
+            @JavascriptInterface
+            public void examFinished() {
+                isExamRunning = false;
+                stopAlarm();
+            }
         }, "AndroidBridge");
 
         webView.setWebViewClient(new WebViewClient());
         webView.setWebChromeClient(new WebChromeClient() {
-            @Override public boolean onShowFileChooser(WebView view, ValueCallback<Uri[]> callback,
+            @Override
+            public boolean onShowFileChooser(WebView view, ValueCallback<Uri[]> callback,
                     FileChooserParams params) {
                 if (fileCallback != null) fileCallback.onReceiveValue(null);
                 fileCallback = callback;
@@ -83,6 +112,80 @@ public class MainActivity extends Activity {
         webView.loadUrl("file:///android_asset/index.html");
     }
 
+    // Saat aplikasi kehilangan fokus (Home, Recent, dll)
+    @Override
+    protected void onPause() {
+        super.onPause();
+        if (isExamRunning) {
+            startAlarm();
+        }
+    }
+
+    // Saat kembali ke aplikasi
+    @Override
+    protected void onResume() {
+        super.onResume();
+        stopAlarm();
+    }
+
+    private void startAlarm() {
+        stopAlarm(); // pastikan tidak double
+
+        try {
+            Uri alarmUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM);
+            if (alarmUri == null) {
+                alarmUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE);
+            }
+
+            alarmPlayer = new MediaPlayer();
+            alarmPlayer.setDataSource(this, alarmUri);
+            alarmPlayer.setAudioAttributes(
+                new AudioAttributes.Builder()
+                    .setUsage(AudioAttributes.USAGE_ALARM)
+                    .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                    .build()
+            );
+            alarmPlayer.setLooping(true);
+            alarmPlayer.setVolume(1.0f, 1.0f);
+            alarmPlayer.prepare();
+            alarmPlayer.start();
+
+            // Naikkan volume alarm ke maksimum
+            AudioManager am = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
+            if (am != null) {
+                int max = am.getStreamMaxVolume(AudioManager.STREAM_ALARM);
+                am.setStreamVolume(AudioManager.STREAM_ALARM, max, 0);
+            }
+        } catch (Exception e) {
+            // fallback sederhana jika gagal
+            try {
+                Uri notif = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);
+                alarmPlayer = MediaPlayer.create(this, notif);
+                if (alarmPlayer != null) {
+                    alarmPlayer.setLooping(true);
+                    alarmPlayer.start();
+                }
+            } catch (Exception ignored) {}
+        }
+    }
+
+    private void stopAlarm() {
+        if (alarmPlayer != null) {
+            try {
+                if (alarmPlayer.isPlaying()) alarmPlayer.stop();
+                alarmPlayer.release();
+            } catch (Exception ignored) {}
+            alarmPlayer = null;
+        }
+    }
+
+    @Override
+    protected void onDestroy() {
+        stopAlarm();
+        super.onDestroy();
+    }
+
+    // ========== kode lama (file picker) ==========
     private String chooseMime(String[] accept) {
         if (accept == null || accept.length == 0) return "*/*";
         for (String item : accept) {
@@ -117,7 +220,8 @@ public class MainActivity extends Activity {
         startActivityForResult(intent, CREATE_FILE);
     }
 
-    @Override protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
         if (requestCode == CREATE_FILE) {
             if (resultCode == RESULT_OK && data != null && data.getData() != null) {
@@ -138,7 +242,8 @@ public class MainActivity extends Activity {
         }
     }
 
-    @Override public void onBackPressed() {
+    @Override
+    public void onBackPressed() {
         if (webView != null && webView.canGoBack()) webView.goBack();
         else super.onBackPressed();
     }
