@@ -31,7 +31,11 @@ public class MainActivity extends Activity {
     // ===== Anti-curang =====
     private boolean isExamRunning = false;
     private MediaPlayer alarmPlayer;
-
+private boolean isLocked = false;
+private final String PASSWORD_PENGAWAS = "KERAMATJAYA";
+private android.view.View lockScreenView;
+private android.widget.EditText etPasswordPengawas;
+private android.widget.TextView tvAlasanKecurangan;
     @Override
     public void onCreate(Bundle state) {
         super.onCreate(state);
@@ -241,7 +245,31 @@ public class MainActivity extends Activity {
             fileCallback = null;
         }
     }
+// ... akhir isi metode onCreate atau metode lain di atasnya ...
+    } // <-- Ini penutup metode onCreate (atau metode sebelumnya)
 
+    // --- MULAI MENARUH METODE DI SINI (di luar onCreate, di dalam MainActivity) ---
+
+    private void tampilkanHalamanLoginPengawas(String alasan) {
+        // ... isi kode tampilkanHalamanLoginPengawas ...
+    }
+
+    @Override
+    public void onBackPressed() {
+        // ... isi kode onBackPressed ...
+    }
+
+    @Override
+    protected void onUserLeaveHint() {
+        // ... isi kode onUserLeaveHint ...
+    }
+
+    @Override
+    protected void onResume() {
+        // ... isi kode onResume ...
+    }
+
+} // <-- Ini kurung kurawal penutup TERAKHIR file MainActivity.java
     @Override
     public void onBackPressed() {
         if (webView != null && webView.canGoBack()) webView.goBack();
